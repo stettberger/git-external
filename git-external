@@ -4,7 +4,9 @@ import re
 import sys
 from subprocess import check_output,check_call, call
 from collections import defaultdict
-import urllib
+import urllib.request
+
+defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
 self_path = os.path.relpath(os.path.abspath(__file__), ".")
 if not "/" in self_path:
@@ -20,12 +22,12 @@ class InitScript:
                 self.config[m.group(1)] = m.group(2)
 
     def self_update(self, *args):
-        url = self.config.get("updateurl")
+        url = self.config.get("updateurl",defaulturl)
         print("Fetching %s" % url)
         if url.startswith("http"):
-            with urllib.urlopen(url) as x:
+            with urllib.request.urlopen(url) as x:
                 update = x.read()
-                with open(self_path, "w+") as fd:
+                with open(self_path, "wb+") as fd:
                     fd.write(update)
         else:
             path = os.path.expanduser(url)
