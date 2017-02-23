@@ -17,7 +17,7 @@ class InitScript:
         self.config = {}
         lines = check_output(["git", "config", "-l"]).decode("utf-8").split("\n")
         for line in lines:
-            m = re.match("initscript\.([^.]+)=(.*)", line)
+            m = re.match("external\.([^.]+)=(.*)", line)
             if m:
                 self.config[m.group(1)] = m.group(2)
 
