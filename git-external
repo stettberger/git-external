@@ -5,10 +5,11 @@ import sys
 from subprocess import check_output,check_call, call
 from collections import defaultdict
 import urllib.request
+import imp
 
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
-self_path = os.path.relpath(os.path.abspath(__file__), ".")
+self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
 if not "/" in self_path:
     self_path = "./" + self_path
 
@@ -180,6 +181,17 @@ class GitExternal:
 
 if __name__ == "__main__":
     modules = [InitScript(), GitExternal()]
+    # Find more modules:
+    for fn in os.listdir(os.path.dirname(self_path)):
+        fn_x = os.path.abspath(fn)
+        x = os.path.abspath(self_path)
+        if fn_x.startswith(x) and fn.endswith(".py"):
+            F = imp.load_source(fn, fn)
+            for obj in dir(F):
+                obj = getattr(F, obj)
+                if hasattr(obj, 'commands'):
+                    modules.append(obj())
+
     commands = {}
     def print_help():
         for cmd in sorted(commands.keys()):
