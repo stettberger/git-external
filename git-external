@@ -59,7 +59,7 @@ class GitExternal:
             lines = check_output(["git", "config", "-l", "-f",
                                   self.externals_file]).decode("utf-8").split("\n")
             for line in lines:
-                m = re.match("external\.([^.]+)\.([^.]+)=(.*)", line)
+                m = re.match("external\.(.+)\.([^.]+)=(.*)", line)
                 if m:
                     self.configurations[m.group(1)][m.group(2)] = m.group(3).strip()
 
