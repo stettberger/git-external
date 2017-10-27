@@ -48,7 +48,7 @@ class GitExternal:
             self.rootdir = check_output(["git", "rev-parse", "--show-toplevel"])
             self.rootdir = self.rootdir.decode('utf-8').strip()
         except CalledProcessError as e:
-            print ("Not a git directory", e)
+            print("Not a git directory", e)
             sys.exit(1)
         self.externals_file = os.path.join(self.rootdir, ".gitexternals")
         self.ignore_file = os.path.join(self.rootdir, ".gitignore")
@@ -203,11 +203,9 @@ if __name__ == "__main__":
         commands.update(module.commands())
 
     if len(sys.argv) == 1:
-        commands[""][1](*sys.argv[1:])
+        commands[""][1]()
     elif sys.argv[1] in commands:
         x = commands[sys.argv[1]][1](*sys.argv[1:])
-        if x == "help":
-            print_help()
     else:
         print_help()
 
