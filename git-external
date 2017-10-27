@@ -2,7 +2,7 @@
 import os
 import re
 import sys
-from subprocess import check_output,check_call, call
+from subprocess import check_output,check_call, call, CalledProcessError
 from collections import defaultdict
 import urllib.request
 import imp
@@ -47,8 +47,9 @@ class GitExternal:
         try:
             self.rootdir = check_output(["git", "rev-parse", "--show-toplevel"])
             self.rootdir = self.rootdir.decode('utf-8').strip()
-        except RuntimeError as e:
+        except CalledProcessError as e:
             print ("Not a git directory", e)
+            sys.exit(1)
         self.externals_file = os.path.join(self.rootdir, ".gitexternals")
         self.ignore_file = os.path.join(self.rootdir, ".gitignore")
         self.configurations = {}
