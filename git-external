@@ -77,22 +77,23 @@ class GitExternal:
         # with the externals from this repository by match-*
         # attribute. The corresponding attribute is globbed against
         # match-attribute.
-        for override, config in override.items():
+        for name, config in override.items():
             for repo in self.configurations:
                 matches = False
                 for key in list(config.keys()):
                     if not key.startswith('match-'):
                         continue
                     pattern = config[key].strip()
-                    del config[key]
                     key = key[len('match-'):]
 
                     attribute = self.configurations[repo][key].strip()
                     if pattern and attribute and fnmatch.fnmatch(attribute, pattern):
                         matches = True
                 if matches:
-                    # print(override, "matches", repo)
-                    self.configurations[repo].update(config)
+                    # print(name, "matches", repo)
+                    self.configurations[repo].update(
+                        {k:v for (k,v) in config.items()
+                         if not k.startswith('match-')})
 
 
     def add_external(self, url, path, branch='master', vcs="git"):
