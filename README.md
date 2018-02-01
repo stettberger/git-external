@@ -55,6 +55,39 @@ git repository inside an external.
 The path where the external's clone resides is added to the `.gitignore`
 file in order to keep it out of your way while you get your work done.
 
+## Overrides
+
+You can overide the settings for externals by putting an external
+section into your global git config. For example, if you want all
+possible forms of Github urls that are used in externals you can match
+up the external defnitions with this override in our `~/.gitconfig`:
+
+    [external "bib-override"]
+    	match-url = "*github.com*luhsra/bib*"
+    	url = "git@github.com:luhsra/bib"
+
+The `match-*` attributes are regular shell globs and matche against
+the corresponding attribute. All other keys override settings in the
+original external definition. A prominent example of such an override
+is to use always git-svn instead of svn:
+
+    [external "override-svn"]
+         match-vcs = svn
+         vcs = git-svn
+
+Another problem that comes up with git-externals is often that you
+have multiple copies of the same repository, over and over again.
+However, `git-external` provides the possibility to symlink an already
+existing repository instead of cloning a new instance. This can also
+be employed by overrides:
+
+    [external "bib-override"]
+    	match-url = "*github.com*luhsra/bib*"
+       symlink = ~/proj/SRA/bib
+
+Instead of cloning always a new instance of the bib repository there
+exists only one instance of it that is always symlinked.
+
 ## Getting Started
 
 1. Install `git-external` into your git repo as `./init`

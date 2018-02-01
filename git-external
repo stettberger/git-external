@@ -6,6 +6,7 @@ from subprocess import check_output,check_call, call, CalledProcessError
 from collections import defaultdict
 import urllib.request
 import imp
+import fnmatch
 
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
@@ -71,9 +72,26 @@ class GitExternal:
             m = re.match("external\.([^.]+)\.([^.]+)=(.*)", line)
             if m:
                 override[m.group(1)][m.group(2)] = m.group(3)
-        for _, config in override.items():
+
+        # We inspect all override configurations and match them up
+        # with the externals from this repository by match-*
+        # attribute. The corresponding attribute is globbed against
+        # match-attribute.
+        for override, config in override.items():
             for repo in self.configurations:
-                if self.configurations[repo]["url"] == config["url"].strip():
+                matches = False
+                for key in list(config.keys()):
+                    if not key.startswith('match-'):
+                        continue
+                    pattern = config[key].strip()
+                    del config[key]
+                    key = key[len('match-'):]
+
+                    attribute = self.configurations[repo][key].strip()
+                    if pattern and attribute and fnmatch.fnmatch(attribute, pattern):
+                        matches = True
+                if matches:
+                    # print(override, "matches", repo)
                     self.configurations[repo].update(config)
 
 
@@ -172,6 +190,14 @@ class GitExternal:
             branch = args[3]
         self.add_external(args[1], args[2], vcs=vcs, branch=branch)
 
+    def cmd_show(self, *args):
+        self.load_configuration()
+        for repo, config in self.configurations.items():
+            print('[external "{}"]'.format(repo))
+            for key, value in config.items():
+                print('  {} = {}'.format(key, value))
+
+
     def commands(self):
         return {
             "": (" -- init or update the externals", self.cmd_update),
@@ -179,12 +205,14 @@ class GitExternal:
             "add":        (" <URL> <PATH> [<branch>] -- add an Git external", self.cmd_add),
             "add-svn":     (" <URL> <PATH> -- add an SVN external", self.cmd_add),
             "add-git-svn": (" <URL> <PATH> -- add an Git SVN external", self.cmd_add),
+            "show-externals": (" -- show the externals configuration", self.cmd_show),
         }
 
 
 if __name__ == "__main__":
     commands = {}
     modules = [InitScript(commands), GitExternal(commands)]
+
     # Find more modules:
     for fn in os.listdir(os.path.dirname(self_path)):
         fn_x = os.path.abspath(fn)
