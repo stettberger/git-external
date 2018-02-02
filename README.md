@@ -82,7 +82,7 @@ existing repository instead of cloning a new instance. This can also
 be employed by overrides:
 
     [external "bib-override"]
-    	match-url = "*github.com*luhsra/bib*"
+       match-url = "*github.com*luhsra/bib*"
        symlink = ~/proj/SRA/bib
 
 Instead of cloning always a new instance of the bib repository there
