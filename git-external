@@ -214,7 +214,10 @@ if __name__ == "__main__":
     commands = {}
     modules = [InitScript(commands), GitExternal(commands)]
 
-    # Find more modules:
+    # Find more modules. We search for all files that are named like
+    # our self_path and end with a .py extension. We load these files
+    # with imp and include all classes that have a .commands attribute
+    # to our module list.
     for fn in os.listdir(os.path.dirname(self_path)):
         fn_x = os.path.abspath(fn)
         x = os.path.abspath(self_path)
