@@ -110,12 +110,12 @@ class GitExternal:
         if os.path.exists(self.ignore_file):
             with open(self.ignore_file, "r") as fd:
                 for line in fd:
-                    if line.strip() in (path, "./" + path):
+                    if line.strip() in (path, "./" + path, "/" + path):
                         found = True
                         break
         if not found:
             with open(self.ignore_file, "a+") as fd:
-                fd.write(path+"\n")
+                fd.write("/" + path+"\n")
 
         check_call(["git", "add", self.externals_file])
         check_call(["git", "add", self.ignore_file])
