@@ -26,7 +26,7 @@ an updatable reference to an external repository which the main
 repository doesn't need to know about.
 
 
-## Why?
+## Why not git submodule?
 
 With `git submodule`, git supports to import other repositories as
 modules, , all of them are a git repository on their own.
