@@ -122,6 +122,24 @@ class GitExternal:
 
         print("Added external %s\n  Don't forget to call init" % (path))
 
+    def switch_or_create_branch(self, path, branch):
+        """Switch to (created) branch in GITDIR=${path}"""
+        if not branch:
+            return
+        br = check_output(["git", "symbolic-ref", "--short", "HEAD"], cwd=path)
+        br = br.decode().strip()
+        if br != branch:
+            branches = check_output(["git", "show-ref", "--heads"], cwd=path)
+            branches = [line.split("/")[-1]
+                        for line in branches.decode() .strip().split("\n")]
+            if branch in branches:
+                print("  Switch to branch: %s (from %s)" % (branch, br))
+            else:
+                print("  Switch and create branch: %s (from %s)" % (branch, br))
+                check_call(["git", "checkout", "-b", branch,
+                            "origin/" + branch], cwd=path)
+
+
     def init_or_update(self, only = None):
         if only is None:
             only = ('clone', 'update')
@@ -138,6 +156,7 @@ class GitExternal:
                     call(["svn", "up"], cwd=path)
                 else:
                     print("Updating Git external: %s" % repo)
+                    self.switch_or_create_branch(path, config.get("branch"))
                     call(["git", "pull", "--ff-only"], cwd=path)
             elif 'clone' in only:
                 # Clone that repo
@@ -157,9 +176,7 @@ class GitExternal:
                 else:
                     print("Cloning Git external: %s" % repo)
                     check_call(["git", "clone", config["url"], path])
-                    if config["branch"] != "master":
-                        check_call(["git", "checkout", "-b", config["branch"],
-                                    "origin/" + config["branch"]])
+                    self.switch_or_create_branch(path, config.get("branch"))
 
             if config.get("run-init", "").lower() == "true":
                 init = os.path.join(path, "init")
