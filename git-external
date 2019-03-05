@@ -5,7 +5,9 @@ import sys
 from subprocess import check_output,check_call, call, CalledProcessError
 from collections import defaultdict
 import urllib.request
-import imp
+import types
+import importlib
+import importlib.machinery
 import fnmatch
 
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
@@ -239,7 +241,9 @@ if __name__ == "__main__":
         fn_x = os.path.abspath(fn)
         x = os.path.abspath(self_path)
         if fn_x.startswith(x) and fn.endswith(".py"):
-            F = imp.load_source(fn, fn)
+            loader = importlib.machinery.SourceFileLoader(fn, fn)
+            F = types.ModuleType(loader.name)
+            loader.exec_module(F)
             for obj in dir(F):
                 obj = getattr(F, obj)
                 if hasattr(obj, 'commands'):
