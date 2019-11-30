@@ -33,7 +33,7 @@ class InitScript:
         file path.
         """
         url = self.config.get("updateurl",defaulturl)
-        print("Fetching %s" % url)
+        print(f"Fetching {url}")
         if url.startswith("http"):
             with urllib.request.urlopen(url) as x:
                 update = x.read()
@@ -45,7 +45,7 @@ class InitScript:
                 update = x.read()
                 with open(self_path, "w+") as fd:
                     fd.write(update)
-        print("Updated %s" % self_path)
+        print(f"Updated {self_path}")
 
     def commands(self):
         return {"self-update": (" -- update the init script", self.self_update)}
@@ -122,11 +122,10 @@ class GitExternal:
         """
         config = ["git", "config", "-f", self.externals_file, "--replace-all"]
         path = os.path.relpath(os.path.abspath(path), self.rootdir)
-        check_call(config + ["external.%s.path" % path, path])
-        check_call(config + ["external.%s.url" % path, url])
-        check_call(config + ["external.%s.branch" % path, branch])
-        check_call(config + ["external.%s.vcs" % path, vcs])
-
+        check_call(config + [f"external.{path}.path", path])
+        check_call(config + [f"external.{path}.url", url])
+        check_call(config + [f"external.{path}.branch", branch])
+        check_call(config + [f"external.{path}.vcs", vcs])
 
         # Add path to ignore file
         found = False
@@ -161,9 +160,9 @@ class GitExternal:
             branches = [line.split("/")[-1]
                         for line in branches.decode().strip().split("\n")]
             if branch in branches:
-                print("  Switch to branch: %s (from %s)" % (branch, br))
+                print(f"  Switch to branch: {branch} (from {br})")
             else:
-                print("  Switch and create branch: %s (from %s)" % (branch, br))
+                print(f"  Switch and create branch: {branch} (from {br}")
                 check_call(["git", "checkout", "-b", branch,
                             "origin/" + branch], cwd=path)
 
@@ -183,24 +182,24 @@ class GitExternal:
             if 'update' in only and os.path.exists(path):
                 # Update that external
                 if vcs == "git-svn":
-                    print("Updating GIT-SVN external: %s" % repo)
+                    print(f"Updating GIT-SVN external: {repo}")
                     call(["git", "svn", "rebase"], cwd=path)
                 elif vcs == "svn":
                     print("Updating Git SVN external: %s" % repo)
                     call(["svn", "up"], cwd=path)
                 else:
-                    print("Updating Git external: %s" % repo)
+                    print(f"Updating Git external: {repo}")
                     self.switch_or_create_branch(path, config.get("branch"))
                     call(["git", "pull", "--ff-only"], cwd=path)
             elif 'clone' in only:
                 # Clone that repo
                 if config.get("symlink"):
                     link = os.path.expanduser(config["symlink"])
-                    print("Cloning symlinked external: %s" % repo)
+                    print(f"Cloning symlinked external: {repo}")
                     assert os.path.exists(link), "Path does not exist"
                     os.symlink(link, path)
                 elif vcs == "git-svn":
-                    print("Cloning Git SVN external: %s" % repo)
+                    print(f"Cloning Git SVN external: {repo}")
                     check_call(["git", "svn", "clone", config["url"],
                                 path, "-r", "HEAD"])
                 elif vcs == "svn":
@@ -208,7 +207,7 @@ class GitExternal:
                     check_call(["svn", "checkout", config["url"],
                                 path, ])
                 else:
-                    print("Cloning Git external: %s" % repo)
+                    print(f"Cloning Git external: {repo}")
                     check_call(["git", "clone", config["url"], path])
                     self.switch_or_create_branch(path, config.get("branch"))
 
@@ -226,7 +225,7 @@ class GitExternal:
         if not os.path.exists(hook):
             with open(hook, "w+") as fd:
                 fd.write("#!/bin/sh\n\n")
-                fd.write("%s\n"%self_path)
+                fd.write(f"{self_path}\n")
             os.chmod(hook, int("755", 8))
 
     def cmd_update(self, *args):
@@ -257,9 +256,9 @@ class GitExternal:
         """Show all externals."""
         self.load_configuration()
         for repo, config in self.configurations.items():
-            print('[external "{}"]'.format(repo))
+            print(f'[external "{repo}"]')
             for key, value in config.items():
-                print('  {} = {}'.format(key, value))
+                print(f'  {key} = {value}')
 
     def commands(self):
         return {
@@ -294,7 +293,7 @@ if __name__ == "__main__":
 
     def print_help():
         for cmd in sorted(commands.keys()):
-            print("%s %s%s" %(self_path, cmd, commands[cmd][0]))
+            print(f"{self_path} {cmd}{commands[cmd][0]}")
     for module in modules:
         commands.update(module.commands())
 
