@@ -13,7 +13,7 @@ import fnmatch
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
 self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
-if not "/" in self_path:
+if "/" not in self_path:
     self_path = "./" + self_path
 
 class InitScript:
@@ -54,11 +54,13 @@ class InitScript:
 class GitExternal:
     def __init__(self, commands):
         try:
-            self.rootdir = check_output(["git", "rev-parse", "--show-toplevel"])
+            self.rootdir = check_output(["git", "rev-parse",
+                                         "--show-toplevel"])
             self.rootdir = self.rootdir.decode('utf-8').strip()
         except CalledProcessError as e:
             print("Not a git directory", e)
             sys.exit(1)
+
         self.externals_file = os.path.join(self.rootdir, ".gitexternals")
         self.ignore_file = os.path.join(self.rootdir, ".gitignore")
         self.configurations = {}
@@ -105,9 +107,8 @@ class GitExternal:
                 if matches:
                     # print(name, "matches", repo)
                     self.configurations[repo].update(
-                        {k:v for (k,v) in config.items()
+                        {k: v for (k, v) in config.items()
                          if not k.startswith('match-')})
-
 
     def add_external(self, url, path, branch='master', vcs="git"):
         """Adding an external by writing it to .gitexternals.
@@ -159,7 +160,7 @@ class GitExternal:
             # <hash> refs/heads/<branchname>
             branches = check_output(["git", "show-ref", "--heads"], cwd=path)
             branches = [line.split("/")[-1]
-                        for line in branches.decode() .strip().split("\n")]
+                        for line in branches.decode().strip().split("\n")]
             if branch in branches:
                 print("  Switch to branch: %s (from %s)" % (branch, br))
             else:
@@ -243,7 +244,7 @@ class GitExternal:
         path   -- path within the current repository (target)
         branch -- optional argument, the branch to checkout
         """
-        if len(args) not in (3,4):
+        if len(args) not in (3, 4):
             return "help"
         vcs = {'add': 'git',
                'add-svn': 'svn',
@@ -260,7 +261,6 @@ class GitExternal:
             print('[external "{}"]'.format(repo))
             for key, value in config.items():
                 print('  {} = {}'.format(key, value))
-
 
     def commands(self):
         return {
