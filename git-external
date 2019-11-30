@@ -63,7 +63,7 @@ class GitExternal:
 
         self.externals_file = os.path.join(self.rootdir, ".gitexternals")
         self.ignore_file = os.path.join(self.rootdir, ".gitignore")
-        self.configurations = {}
+        self.configurations = defaultdict(dict)
 
     def load_configuration(self):
         """Load the configuration from ./.gitexternals and git configuration.
@@ -71,7 +71,6 @@ class GitExternal:
         Matching values from git configuration override values specified in
         ./.gitexternals.
         """
-        self.configurations = defaultdict(dict)
         if os.path.exists(self.externals_file):
             lines = check_output(["git", "config", "-l", "-f",
                                   self.externals_file]).decode("utf-8").split("\n")
