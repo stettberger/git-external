@@ -9,6 +9,7 @@ import types
 import importlib
 import importlib.machinery
 import fnmatch
+import contextlib
 
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
@@ -25,6 +26,18 @@ class InitScript:
             if m:
                 self.config[m.group(1)] = m.group(2)
 
+    @contextlib.contextmanager
+    def _open_url(self, url):
+        """Open url either as http(s) link or as file path and return the file
+        object.
+        """
+        if url.startswith("http"):
+            with urllib.request.urlopen(url) as x:
+                yield x
+        else:
+            with open(url, "r") as x:
+                yield x
+
     def self_update(self, *args):
         """Update the script itself.
 
@@ -34,17 +47,10 @@ class InitScript:
         """
         url = self.config.get("updateurl",defaulturl)
         print(f"Fetching {url}")
-        if url.startswith("http"):
-            with urllib.request.urlopen(url) as x:
-                update = x.read()
-                with open(self_path, "wb+") as fd:
-                    fd.write(update)
-        else:
-            path = os.path.expanduser(url)
-            with open(path, "r") as x:
-                update = x.read()
-                with open(self_path, "w+") as fd:
-                    fd.write(update)
+        with self._open_url(url) as x:
+            update = x.read()
+            with open(self_path, "wb+") as fd:
+                fd.write(update)
         print(f"Updated {self_path}")
 
     def commands(self):
