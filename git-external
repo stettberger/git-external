@@ -26,6 +26,12 @@ class InitScript:
                 self.config[m.group(1)] = m.group(2)
 
     def self_update(self, *args):
+        """Update the script itself.
+
+        If "updateurl" is given in the git configuration, it is used for update
+        otherwise defaulturl is used. The format can either be a web URL or a
+        file path.
+        """
         url = self.config.get("updateurl",defaulturl)
         print("Fetching %s" % url)
         if url.startswith("http"):
@@ -58,6 +64,11 @@ class GitExternal:
         self.configurations = {}
 
     def load_configuration(self):
+        """Load the configuration from ./.gitexternals and git configuration.
+
+        Matching values from git configuration override values specified in
+        ./.gitexternals.
+        """
         self.configurations = defaultdict(dict)
         if os.path.exists(self.externals_file):
             lines = check_output(["git", "config", "-l", "-f",
@@ -99,6 +110,16 @@ class GitExternal:
 
 
     def add_external(self, url, path, branch='master', vcs="git"):
+        """Adding an external by writing it to .gitexternals.
+
+        Arguments:
+        url  -- URL of the external (source location)
+        path -- Path of the external (target directory)
+
+        Keyword arguments:
+        branch -- Which branch should be cloned/pulled.
+        vcs    -- Which vcs to use (git, svn, or git-svn).
+        """
         config = ["git", "config", "-f", self.externals_file, "--replace-all"]
         path = os.path.relpath(os.path.abspath(path), self.rootdir)
         check_call(config + ["external.%s.path" % path, path])
@@ -110,11 +131,13 @@ class GitExternal:
         # Add path to ignore file
         found = False
         if os.path.exists(self.ignore_file):
+            # check if directory is already ignored
             with open(self.ignore_file, "r") as fd:
                 for line in fd:
                     if line.strip() in (path, "./" + path, "/" + path):
                         found = True
                         break
+        # append to .gitignore
         if not found:
             with open(self.ignore_file, "a+") as fd:
                 fd.write("/" + path+"\n")
@@ -131,6 +154,9 @@ class GitExternal:
         br = check_output(["git", "symbolic-ref", "--short", "HEAD"], cwd=path)
         br = br.decode().strip()
         if br != branch:
+            # list of branches
+            # expected output:
+            # <hash> refs/heads/<branchname>
             branches = check_output(["git", "show-ref", "--heads"], cwd=path)
             branches = [line.split("/")[-1]
                         for line in branches.decode() .strip().split("\n")]
@@ -141,8 +167,14 @@ class GitExternal:
                 check_call(["git", "checkout", "-b", branch,
                             "origin/" + branch], cwd=path)
 
+    def init_or_update(self, only=None):
+        """Init or update all repositories in self.configurations.
 
-    def init_or_update(self, only = None):
+        Keyword arguments:
+        only -- values could be "clone" and/or "update". If "clone" is given,
+                init the repository. If "update" is given, update the
+                repository. Default is "clone" and "update".
+        """
         if only is None:
             only = ('clone', 'update')
         for repo, config in self.configurations.items():
@@ -187,6 +219,9 @@ class GitExternal:
                     call(init, cwd=path)
 
     def install_hook(self):
+        """Install the script into git hooks, so it is executed every
+        merge/pull.
+        """
         hook = os.path.join(self.rootdir, ".git/hooks/post-merge")
         if not os.path.exists(hook):
             with open(hook, "w+") as fd:
@@ -195,11 +230,19 @@ class GitExternal:
             os.chmod(hook, int("755", 8))
 
     def cmd_update(self, *args):
+        """Update/clone all externals."""
         self.load_configuration()
         self.init_or_update()
         self.install_hook()
 
     def cmd_add(self, *args):
+        """Add an external.
+
+        Arguments:
+        url    -- url of the new repository (source)
+        path   -- path within the current repository (target)
+        branch -- optional argument, the branch to checkout
+        """
         if len(args) not in (3,4):
             return "help"
         vcs = {'add': 'git',
@@ -211,6 +254,7 @@ class GitExternal:
         self.add_external(args[1], args[2], vcs=vcs, branch=branch)
 
     def cmd_show(self, *args):
+        """Show all externals."""
         self.load_configuration()
         for repo, config in self.configurations.items():
             print('[external "{}"]'.format(repo))
