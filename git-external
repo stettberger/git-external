@@ -2,7 +2,8 @@
 import os
 import re
 import sys
-from subprocess import check_output,check_call, call, CalledProcessError
+from subprocess import check_output, check_call, call, CalledProcessError
+from subprocess import DEVNULL
 from collections import defaultdict
 import urllib.request
 import types
@@ -86,14 +87,62 @@ class GitExternal:
         self.ignore_file = os.path.join(self.rootdir, ".gitignore")
         self.configurations = defaultdict(dict)
 
+    def is_git_svn(self, path=None):
+        """Check if path is a git svn repository."""
+        if path is None:
+            path = self.rootdir
+        foo = call(["git", "svn", "info"], stdout=DEVNULL, cwd=path)
+        return foo == 0
+
+    def get_git_svn_externals(self):
+        if not self.is_git_svn():
+            return defaultdict(dict)
+        exts = check_output(["git", "svn", "show-externals"]).decode()
+        externals = defaultdict(dict)
+        prefix = ""
+        for line in exts.split('\n'):
+            m = re.match(r"^# (.*)", line)
+            if m:
+                prefix = m.group(1)
+            elif line.startswith(prefix):
+                m = re.match(r"(.*) (.*)", line[len(prefix):])
+                if m:
+                    externals[prefix + m.group(2)] = {
+                        'path': prefix[1:] + m.group(2),
+                        'url': m.group(1),
+                        'vcs': 'git-svn'
+                    }
+        return externals
+
+    def merge_externals(self, new_externals):
+        """Merge the given new externals into the already existing externals in
+        self.configurations.
+
+        If a path in new_externals dominates an already existing external, the
+        existing one will be overwritten.
+        """
+        # make a mapping [(repo_url, key), ...]
+        new_paths = [(new_externals[x]['path'], x) for x in new_externals]
+
+        for path, repo in new_paths:
+            matches = [x for x in self.configurations
+                       if self.configurations[x]['path'].startswith(path)]
+            for match in matches:
+                del self.configurations[match]
+                print(f"External '{repo}' is masking '{match}'.",
+                      file=sys.stderr)
+            self.configurations[repo] = new_externals[repo]
+
     def load_configuration(self):
         """Load the configuration from ./.gitexternals and git configuration.
 
         Matching values from git configuration override values specified in
         ./.gitexternals.
         """
+        self.configurations = self.get_git_svn_externals()
+
         if os.path.exists(self.externals_file):
-            self.configurations = get_git_config(file=self.externals_file)
+            self.merge_externals(get_git_config(file=self.externals_file))
 
         # Overrides from global config
         override = get_git_config()
