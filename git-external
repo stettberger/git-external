@@ -374,6 +374,8 @@ if __name__ == "__main__":
     if os.access(self_path, os.W_OK):
         modules.append(InitScript())
 
+    parser.set_defaults(func=modules[0].cmd_update)
+
     # Find more modules. We search for all files that are named like
     # our self_path and end with a .py extension. We load these files
     # with imp and include all classes that have a .commands attribute
