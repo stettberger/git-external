@@ -228,6 +228,11 @@ class GitExternal:
                 check_call(["git", "checkout", "-b", branch,
                             "origin/" + branch], cwd=path)
 
+    def is_repository(self, path: str) -> bool:
+        """Check if path is a git or SVN repository."""
+        return any([os.path.exists(os.path.join(path, x))
+                    for x in ['.git', '.svn']])
+
     def init_or_update(self, only=None):
         """Init or update all repositories in self.configurations.
 
@@ -240,8 +245,8 @@ class GitExternal:
             only = ('clone', 'update')
         for repo, config in self.configurations.items():
             path = os.path.join(self.rootdir, config["path"])
-            vcs = config.get("vcs","git").lower()
-            if 'update' in only and os.path.exists(path):
+            vcs = config.get("vcs", "git").lower()
+            if 'update' in only and self.is_repository(path):
                 # Update that external
                 if vcs == "git-svn":
                     print(f"Updating GIT-SVN external: {repo}")
