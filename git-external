@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Add other Git directories as externals (subfolders)."""
 import os
 import re
 import sys
