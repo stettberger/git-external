@@ -17,6 +17,7 @@ setup(name='git-external',
           "Topic :: Software Development :: Version Control"
       ],
       zip_safe=False,
-      scripts=['bin/git-external']
+      scripts=['bin/git-external'],
+      python_requires='>=3.6'
 )
 
