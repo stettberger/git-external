@@ -11,6 +11,7 @@ import importlib
 import importlib.machinery
 import fnmatch
 import contextlib
+import argparse
 
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
 
@@ -38,8 +39,24 @@ def get_git_config(file=None) -> dict:
     return config
 
 
+class command_description:
+    """Decorator that adds a hidden attribute _commands to the class which
+    function was decorated. _commands is a list consisting of tuples of
+    (<command_name>, <command_help>, <function_that_executes_command>)
+    """
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __set_name__(self, owner, name):
+        if "_commands" not in owner.__dict__:
+            owner._commands = []
+        owner._commands.append((self.fn.__name__.replace('_', '-'),
+                                self.fn.__doc__, self.fn))
+        setattr(owner, name, self.fn)
+
+
 class InitScript:
-    def __init__(self, commands):
+    def __init__(self):
         self.config = get_git_config()
 
     @contextlib.contextmanager
@@ -54,7 +71,7 @@ class InitScript:
             with open(url, "r") as x:
                 yield x
 
-    def self_update(self, *args):
+    def cmd_self_update(self, args):
         """Update the script itself.
 
         If "updateurl" is given in the git configuration, it is used for update
@@ -69,12 +86,14 @@ class InitScript:
                 fd.write(update)
         print(f"Updated {self_path}")
 
-    def commands(self):
-        return {"self-update": (" -- update the init script", self.self_update)}
+    @command_description
+    def self_update(self, subparser):
+        """update the init script"""
+        subparser.set_defaults(func=self.cmd_self_update)
 
 
 class GitExternal:
-    def __init__(self, commands):
+    def __init__(self):
         try:
             self.rootdir = check_output(["git", "rev-parse",
                                          "--show-toplevel"])
@@ -295,31 +314,22 @@ class GitExternal:
                 fd.write(f"{self_path}\n")
             os.chmod(hook, int("755", 8))
 
-    def cmd_update(self, *args):
+    def cmd_update(self, args):
         """Update/clone all externals."""
         self.load_configuration()
         self.init_or_update()
         self.install_hook()
 
-    def cmd_add(self, *args):
+    def cmd_add(self, args):
         """Add an external.
 
         Arguments:
-        url    -- url of the new repository (source)
-        path   -- path within the current repository (target)
-        branch -- optional argument, the branch to checkout
+        args   -- arguments retrieved with argparse
         """
-        if len(args) not in (3, 4):
-            return "help"
-        vcs = {'add': 'git',
-               'add-svn': 'svn',
-               'add-git-svn': 'git-svn'}[args[0]]
-        branch = "master"
-        if len(args) > 3:
-            branch = args[3]
-        self.add_external(args[1], args[2], vcs=vcs, branch=branch)
+        self.add_external(args.URL, args.PATH,
+                          vcs=args.vcs, branch=args.branch)
 
-    def cmd_show(self, *args):
+    def cmd_show(self, args):
         """Show all externals."""
         self.load_configuration()
         for repo, config in self.configurations.items():
@@ -327,20 +337,40 @@ class GitExternal:
             for key, value in config.items():
                 print(f'  {key} = {value}')
 
-    def commands(self):
-        return {
-            "": (" -- init or update the externals", self.cmd_update),
-            "update": (" -- init or update the externals", self.cmd_update),
-            "add":        (" <URL> <PATH> [<branch>] -- add an Git external", self.cmd_add),
-            "add-svn":     (" <URL> <PATH> -- add an SVN external", self.cmd_add),
-            "add-git-svn": (" <URL> <PATH> -- add an Git SVN external", self.cmd_add),
-            "show-externals": (" -- show the externals configuration", self.cmd_show),
-        }
+    @command_description
+    def update(self, subparser):
+        """init or update the externals"""
+        subparser.set_defaults(func=self.cmd_update)
+
+    @command_description
+    def add(self, subparser):
+        """add a Git or Git SVN external"""
+        subparser.set_defaults(func=self.cmd_add)
+        subparser.add_argument("URL", help="Url of the external")
+        subparser.add_argument("PATH", help="Path where to clone the external")
+        subparser.add_argument("-b", "--branch", default="master",
+                               help="Branch that should be used")
+        vcs_group = subparser.add_mutually_exclusive_group()
+        vcs_group.add_argument("-s", "--svn", action='store_const',
+                               dest='vcs', const='svn', default='git',
+                               help="Use 'svn' for handling the external")
+        vcs_group.add_argument("-g", "--git-svn", action='store_const',
+                               dest='vcs', const='git-svn', default='git',
+                               help="Use 'git-svn' for handling the external")
+
+    @command_description
+    def show(self, subparser):
+        """show the externals configuration"""
+        subparser.set_defaults(func=self.cmd_show)
 
 
 if __name__ == "__main__":
-    commands = {}
-    modules = [InitScript(commands), GitExternal(commands)]
+
+    parser = argparse.ArgumentParser(prog=sys.argv[0],
+                                     description=sys.modules[__name__].__doc__)
+    subparsers = parser.add_subparsers(help='sub-command help')
+
+    modules = [InitScript(), GitExternal()]
 
     # Find more modules. We search for all files that are named like
     # our self_path and end with a .py extension. We load these files
@@ -355,20 +385,14 @@ if __name__ == "__main__":
             loader.exec_module(F)
             for obj in dir(F):
                 obj = getattr(F, obj)
-                if hasattr(obj, 'commands'):
-                    modules.append(obj(commands))
+                if hasattr(obj, '_commands'):
+                    modules.append(obj())
 
-    def print_help():
-        for cmd in sorted(commands.keys()):
-            print(f"{self_path} {cmd}{commands[cmd][0]}")
-    for module in modules:
-        commands.update(module.commands())
+    for mod in modules:
+        for cmd, help_msg, init in mod._commands:
+            cmd_parser = subparsers.add_parser(cmd, help=help_msg)
+            init(mod, cmd_parser)
 
-    if len(sys.argv) == 1:
-        commands[""][1]()
-    elif sys.argv[1] in commands:
-        x = commands[sys.argv[1]][1](*sys.argv[1:])
-    else:
-        print_help()
+    args = parser.parse_args()
 
-    sys.exit()
+    sys.exit(args.func(args))
