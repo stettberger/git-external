@@ -91,7 +91,8 @@ class GitExternal:
         """Check if path is a git svn repository."""
         if path is None:
             path = self.rootdir
-        foo = call(["git", "svn", "info"], stdout=DEVNULL, cwd=path)
+        foo = call(["git", "svn", "info"], stdout=DEVNULL, stderr=DEVNULL,
+                   cwd=path)
         return foo == 0
 
     def get_git_svn_externals(self):
