@@ -3,3 +3,6 @@ is-positive-svn
 is-positive-git
 is-positive-symlink
 __pycache__
+build
+dist
+*egg-info
