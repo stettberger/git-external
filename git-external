@@ -150,9 +150,10 @@ class GitExternal:
         """Switch to (created) branch in GITDIR=${path}"""
         if not branch:
             return
-        br = check_output(["git", "symbolic-ref", "--short", "HEAD"], cwd=path)
-        br = br.decode().strip()
-        if br != branch:
+        cur_branch = check_output(["git", "symbolic-ref", "--short", "HEAD"],
+                                  cwd=path)
+        cur_branch = cur_branch.decode().strip()
+        if cur_branch != branch:
             # list of branches
             # expected output:
             # <hash> refs/heads/<branchname>
@@ -160,9 +161,9 @@ class GitExternal:
             branches = [line.split("/")[-1]
                         for line in branches.decode().strip().split("\n")]
             if branch in branches:
-                print(f"  Switch to branch: {branch} (from {br})")
+                print(f"  Switch to branch: {branch} (from {cur_branch})")
             else:
-                print(f"  Switch and create branch: {branch} (from {br}")
+                print(f"  Switch and create branch: {branch} (from {cur_branch}")
                 check_call(["git", "checkout", "-b", branch,
                             "origin/" + branch], cwd=path)
 
