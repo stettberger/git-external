@@ -17,14 +17,29 @@ self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
 if "/" not in self_path:
     self_path = "./" + self_path
 
+
+def get_git_config(file=None) -> dict:
+    """Return the git configuration as retrieved in the current directory as a
+    dictionary.
+
+    If file is given, git configuration is read only from this file.
+    """
+    file_cmd = []
+    if file:
+        file_cmd = ["-f", file]
+    config = defaultdict(dict)
+    lines = check_output(["git", "config", "-l"] + file_cmd)
+    lines = lines.decode("utf-8").split("\n")
+    for line in lines:
+        m = re.match(r"external\.([^.]+)\.([^.]+)=(.*)", line)
+        if m:
+            config[m.group(1)][m.group(2)] = m.group(3)
+    return config
+
+
 class InitScript:
     def __init__(self, commands):
-        self.config = {}
-        lines = check_output(["git", "config", "-l"]).decode("utf-8").split("\n")
-        for line in lines:
-            m = re.match("external\.([^.]+)=(.*)", line)
-            if m:
-                self.config[m.group(1)] = m.group(2)
+        self.config = get_git_config()
 
     @contextlib.contextmanager
     def _open_url(self, url):
@@ -45,7 +60,7 @@ class InitScript:
         otherwise defaulturl is used. The format can either be a web URL or a
         file path.
         """
-        url = self.config.get("updateurl",defaulturl)
+        url = self.config["external"].get("updateurl", defaulturl)
         print(f"Fetching {url}")
         with self._open_url(url) as x:
             update = x.read()
@@ -78,20 +93,10 @@ class GitExternal:
         ./.gitexternals.
         """
         if os.path.exists(self.externals_file):
-            lines = check_output(["git", "config", "-l", "-f",
-                                  self.externals_file]).decode("utf-8").split("\n")
-            for line in lines:
-                m = re.match("external\.(.+)\.([^.]+)=(.*)", line)
-                if m:
-                    self.configurations[m.group(1)][m.group(2)] = m.group(3).strip()
+            self.configurations = get_git_config(file=self.externals_file)
 
         # Overrides from global config
-        lines = check_output(["git", "config", "-l"]).decode("utf-8").split("\n")
-        override = defaultdict(dict)
-        for line in lines:
-            m = re.match("external\.([^.]+)\.([^.]+)=(.*)", line)
-            if m:
-                override[m.group(1)][m.group(2)] = m.group(3)
+        override = get_git_config()
 
         # We inspect all override configurations and match them up
         # with the externals from this repository by match-*
