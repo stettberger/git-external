@@ -5,7 +5,7 @@ import re
 import sys
 from subprocess import check_output, check_call, call, CalledProcessError
 from subprocess import DEVNULL
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import urllib.request
 import types
 import importlib
@@ -255,13 +255,14 @@ class GitExternal:
         return any([os.path.exists(os.path.join(path, x))
                     for x in ['.git', '.svn']])
 
-    def init_or_update(self, only=None):
+    def init_or_update(self, recursive=True, only=None):
         """Init or update all repositories in self.configurations.
 
         Keyword arguments:
-        only -- values could be "clone" and/or "update". If "clone" is given,
-                init the repository. If "update" is given, update the
-                repository. Default is "clone" and "update".
+        recursive -- checkout/clone externals in externals
+        only      -- values could be "clone" and/or "update". If "clone" is
+                     given, init the repository. If "update" is given, update
+                     the repository. Default is "clone" and "update".
         """
         if only is None:
             only = ('clone', 'update')
@@ -300,11 +301,11 @@ class GitExternal:
                     check_call(["git", "clone", config["url"], path])
                     self.switch_or_create_branch(path, config.get("branch"))
             # recursively call for externals
-            if (vcs in ['git', 'git-svn'] and
+            if (args.recursive and vcs in ['git', 'git-svn'] and
                     set(only) & set(['clone', 'update'])):
                 print(f"Updating externals of {repo}")
                 ext = GitExternal(path=path)
-                ext.cmd_update(None)
+                ext.cmd_update(namedtuple('Args', ['recursive'])(True))
 
             if config.get("run-init", "").lower() == "true":
                 init = os.path.join(path, "init")
@@ -326,13 +327,16 @@ class GitExternal:
     def cmd_update(self, args):
         """Update/clone all externals."""
         self.load_configuration()
-        self.init_or_update()
+        self.init_or_update(recursive=args.recursive)
         self.install_hook()
 
     @command_description
     def update(self, subparser):
         """init or update the externals"""
         subparser.set_defaults(func=self.cmd_update)
+        subparser.add_argument("-r", "--not-recursive", action="store_false",
+                               dest="recursive",
+                               help="Do not clone externals in externals.")
 
     def cmd_add(self, args):
         """Add an external.
@@ -383,7 +387,8 @@ if __name__ == "__main__":
     if os.access(self_path, os.W_OK):
         modules.append(InitScript())
 
-    parser.set_defaults(func=modules[0].cmd_update)
+    # default action: recursive update
+    parser.set_defaults(func=modules[0].cmd_update, recursive=True)
 
     # Find more modules. We search for all files that are named like
     # our self_path and end with a .py extension. We load these files
