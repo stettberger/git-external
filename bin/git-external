@@ -305,7 +305,8 @@ class GitExternal:
                     set(only) & set(['clone', 'update'])):
                 print(f"Updating externals of {repo}")
                 ext = GitExternal(path=path)
-                ext.cmd_update(namedtuple('Args', ['recursive'])(True))
+                ext.cmd_update(namedtuple('Args', ['recursive', 'automatic'])
+                               (True, False))
 
             if config.get("run-init", "").lower() == "true":
                 init = os.path.join(path, "init")
@@ -328,7 +329,8 @@ class GitExternal:
         """Update/clone all externals."""
         self.load_configuration()
         self.init_or_update(recursive=args.recursive)
-        self.install_hook()
+        if args.automatic:
+            self.install_hook()
 
     @command_description
     def update(self, subparser):
@@ -337,6 +339,9 @@ class GitExternal:
         subparser.add_argument("-r", "--not-recursive", action="store_false",
                                dest="recursive",
                                help="Do not clone externals in externals.")
+        subparser.add_argument("-a", "--not-automatic", action="store_false",
+                               dest="automatic",
+                               help="Do not update externals on every pull.")
 
     def cmd_add(self, args):
         """Add an external.
