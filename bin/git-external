@@ -329,6 +329,11 @@ class GitExternal:
         self.init_or_update()
         self.install_hook()
 
+    @command_description
+    def update(self, subparser):
+        """init or update the externals"""
+        subparser.set_defaults(func=self.cmd_update)
+
     def cmd_add(self, args):
         """Add an external.
 
@@ -337,19 +342,6 @@ class GitExternal:
         """
         self.add_external(args.URL, args.PATH,
                           vcs=args.vcs, branch=args.branch)
-
-    def cmd_show(self, args):
-        """Show all externals."""
-        self.load_configuration()
-        for repo, config in self.configurations.items():
-            print(f'[external "{repo}"]')
-            for key, value in config.items():
-                print(f'  {key} = {value}')
-
-    @command_description
-    def update(self, subparser):
-        """init or update the externals"""
-        subparser.set_defaults(func=self.cmd_update)
 
     @command_description
     def add(self, subparser):
@@ -366,6 +358,14 @@ class GitExternal:
         vcs_group.add_argument("-g", "--git-svn", action='store_const',
                                dest='vcs', const='git-svn', default='git',
                                help="Use 'git-svn' for handling the external")
+
+    def cmd_show(self, args):
+        """Show all externals."""
+        self.load_configuration()
+        for repo, config in self.configurations.items():
+            print(f'[external "{repo}"]')
+            for key, value in config.items():
+                print(f'  {key} = {value}')
 
     @command_description
     def show(self, subparser):
