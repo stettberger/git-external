@@ -14,7 +14,7 @@ import fnmatch
 import contextlib
 import argparse
 
-defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
+defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/bin/git-external"
 
 self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
 if "/" not in self_path:
