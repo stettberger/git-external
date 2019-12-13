@@ -112,6 +112,12 @@ class GitExternal:
         """Check if path is a git svn repository."""
         if path is None:
             path = self.rootdir
+
+        # call to 'git svn info' causes git to create an .git/svn (empty)
+        # repository, so everyone thinks it is actually a git svn repo (except
+        # 'git svn info' itself), so check that before
+        if not os.path.exists(os.path.join(path, '.git', 'svn')):
+            return False
         foo = call(["git", "svn", "info"], stdout=DEVNULL, stderr=DEVNULL,
                    cwd=path)
         return foo == 0
