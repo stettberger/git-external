@@ -399,7 +399,8 @@ if __name__ == "__main__":
         modules.append(InitScript())
 
     # default action: recursive update
-    parser.set_defaults(func=modules[0].cmd_update, recursive=True)
+    parser.set_defaults(func=modules[0].cmd_update, recursive=True,
+                        automatic=True)
 
     # Find more modules. We search for all files that are named like
     # our self_path and end with a .py extension. We load these files
