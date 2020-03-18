@@ -14,7 +14,7 @@ import fnmatch
 import contextlib
 import argparse
 
-defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/git-external"
+defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/bin/git-external"
 
 self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
 if "/" not in self_path:
@@ -37,6 +37,9 @@ def get_git_config(file=None, path='.') -> dict:
         m = re.match(r"external\.([^.]+)\.([^.]+)=(.*)", line)
         if m:
             config[m.group(1)][m.group(2)] = m.group(3)
+        m = re.match(r"external\.([^.]+)=(.*)", line)
+        if m:
+            config["external"][m.group(1)]= m.group(2)
     return config
 
 
@@ -69,7 +72,7 @@ class InitScript:
             with urllib.request.urlopen(url) as x:
                 yield x
         else:
-            with open(url, "r") as x:
+            with open(os.path.expanduser(url), "rb") as x:
                 yield x
 
     def cmd_self_update(self, args):
