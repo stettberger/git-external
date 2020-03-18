@@ -296,6 +296,8 @@ class GitExternal:
                     link = os.path.expanduser(config["symlink"])
                     print(f"Cloning symlinked external: {repo}")
                     assert os.path.exists(link), "Path does not exist"
+                    if os.path.exists(path) and os.path.islink(path):
+                        os.unlink(path)
                     os.symlink(link, path)
                 elif vcs == "git-svn":
                     print(f"Cloning Git SVN external: {repo}")
