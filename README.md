@@ -55,6 +55,17 @@ git repository inside an external.
 The path where the external's clone resides is added to the `.gitignore`
 file in order to keep it out of your way while you get your work done.
 
+With the `only` attribute you prevent git-external to clone the
+repository by default. For these externals, the explicit `clone`
+command has to be used.
+
+    [external "repo"]
+    	path = local-path
+    	url = git@github.com:remote/repo.git
+    	branch = master
+    	only = update
+    	vcs = git
+
 ## Overrides
 
 You can overide the settings for externals by putting an external
