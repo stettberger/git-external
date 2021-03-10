@@ -344,8 +344,11 @@ class GitExternal:
         """Install the script into git hooks, so it is executed every
         merge/pull.
         """
-        hook = check_output(["git", "rev-parse", "--git-path", "hooks"])
-        hook = os.path.join(hook.decode().strip(), "post-merge")
+        hook_dir = check_output(["git", "rev-parse", "--git-path", "hooks"])
+        hook_dir = hook_dir.decode().strip()
+        hook = os.path.join(hook_dir, "post-merge")
+        if not os.path.exists(hook_dir):
+            os.mkdir(hook_dir)
         if not os.path.exists(hook):
             with open(hook, "w+") as fd:
                 fd.write("#!/bin/sh\n\n")
