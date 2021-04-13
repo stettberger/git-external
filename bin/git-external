@@ -130,6 +130,16 @@ class GitExternal:
             return defaultdict(dict)
         exts = check_output(["git", "svn", "show-externals"],
                             cwd=self.path).decode()
+        # git svn is strange here, sometimes the url is the second group,
+        # sometimes it is part of the first group and the external name is the
+        # second group
+        #
+        # example output of git svn show-externals:
+        # # /path/to/
+        # /path/to/svn+ssh://git@host.de/repo external1
+        #
+        # # /other/path/to/
+        # /other/path/to/external2 https://host.de/repo
         externals = defaultdict(dict)
         prefix = ""
         for line in exts.split('\n'):
@@ -139,11 +149,18 @@ class GitExternal:
             elif line.startswith(prefix):
                 m = re.match(r"(.*) (.*)", line[len(prefix):])
                 if m:
-                    externals[prefix + m.group(2)] = {
-                        'path': prefix[1:] + m.group(2),
-                        'url': m.group(1),
-                        'vcs': 'git-svn'
-                    }
+                    if '://' in m.group(2):
+                        externals[prefix + m.group(1)] = {
+                            'path': prefix[1:] + m.group(1),
+                            'url': m.group(2),
+                            'vcs': 'git-svn'
+                        }
+                    else:
+                        externals[prefix + m.group(2)] = {
+                            'path': prefix[1:] + m.group(2),
+                            'url': m.group(1),
+                            'vcs': 'git-svn'
+                        }
         return externals
 
     def merge_externals(self, new_externals):
