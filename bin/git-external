@@ -34,7 +34,7 @@ def get_git_config(file=None, path='.') -> dict:
     lines = check_output(["git", "config", "-l"] + file_cmd, cwd=path)
     lines = lines.decode("utf-8").split("\n")
     for line in lines:
-        m = re.match(r"external\.([^.]+)\.([^.]+)=(.*)", line)
+        m = re.match(r"external\.(.+)\.([^.]+)=(.*)", line)
         if m:
             config[m.group(1)][m.group(2)] = m.group(3)
         m = re.match(r"external\.([^.]+)=(.*)", line)
