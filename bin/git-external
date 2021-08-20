@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from subprocess import check_output, check_call, call, CalledProcessError
+from subprocess import check_output, check_call, call, run, CalledProcessError
 from subprocess import DEVNULL
 from collections import defaultdict, namedtuple
 import urllib.request
@@ -238,27 +238,6 @@ class GitExternal:
 
         print("Added external %s\n  Don't forget to call init" % (path))
 
-    def switch_or_create_branch(self, path, branch):
-        """Switch to (created) branch in GITDIR=${path}"""
-        if not branch:
-            return
-        cur_branch = check_output(["git", "symbolic-ref", "--short", "HEAD"],
-                                  cwd=path)
-        cur_branch = cur_branch.decode().strip()
-        if cur_branch != branch:
-            # list of branches
-            # expected output:
-            # <hash> refs/heads/<branchname>
-            branches = check_output(["git", "show-ref", "--heads"], cwd=path)
-            branches = [line.split("/")[-1]
-                        for line in branches.decode().strip().split("\n")]
-            if branch in branches:
-                print(f"  Switch to branch: {branch} (from {cur_branch})")
-            else:
-                print(f"  Switch and create branch: {branch} (from {cur_branch}")
-                check_call(["git", "checkout", "-b", branch,
-                            "origin/" + branch], cwd=path)
-
     def is_repository(self, path: str) -> bool:
         """Check if path is a git or SVN repository."""
         return any([os.path.exists(os.path.join(path, x))
@@ -301,9 +280,13 @@ class GitExternal:
                     print("Updating Git SVN external: %s" % repo)
                     call(["svn", "up"], cwd=path)
                 else:
-                    print(f"Updating Git external: {repo}")
-                    self.switch_or_create_branch(path, config.get("branch"))
-                    call(["git", "pull", "--ff-only"], cwd=path)
+                    cur_branch = run(["git", "symbolic-ref", "--short", "HEAD"],
+                                     cwd=path, capture_output=True)
+                    if cur_branch.stdout.decode().strip() == config.get("branch"):
+                        print(f"Updating Git external: {repo}")
+                        call(["git", "pull", "--ff-only"], cwd=path)
+                    else:
+                        print(f"Skipping update of Git external: {repo}")
             elif 'clone' in repo_only and not self.is_repository(path):
                 # Clone that repo
                 if config.get("symlink"):
@@ -324,7 +307,10 @@ class GitExternal:
                 else:
                     print(f"Cloning Git external: {repo}")
                     check_call(["git", "clone", config["url"], path])
-                    self.switch_or_create_branch(path, config.get("branch"))
+                    branch = config.get("branch")
+                    print(f"  Switch to branch or tag: {branch}")
+                    check_call(["git", "checkout", branch],
+                               cwd=path)
             # recursively call for externals
             if (args.recursive and vcs in ['git', 'git-svn'] and
                     set(repo_only) & set(['clone', 'update'])):
