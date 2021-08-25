@@ -14,6 +14,18 @@ import fnmatch
 import contextlib
 import argparse
 
+import logging
+try:
+    import coloredlogs
+    colors = coloredlogs.parse_encoded_styles("debug=green;info=green;warning=yellow,bold;error=red;critical=red,bold")
+    fields = coloredlogs.parse_encoded_styles("name=blue;levelname=white,bold")
+    coloredlogs.install(fmt="[%(name)s] %(levelname)s: %(message)s",
+                        level_styles=colors, field_styles=fields)
+except ImportError:
+    logging.basicConfig(level=logging.INFO)
+    pass
+log = logging.getLogger("git-external")
+
 defaulturl = "https://raw.githubusercontent.com/stettberger/git-external/master/bin/git-external"
 
 self_path = os.path.relpath(os.path.abspath(sys.argv[0]), ".")
@@ -83,12 +95,12 @@ class InitScript:
         file path.
         """
         url = self.config["external"].get("updateurl", defaulturl)
-        print(f"Fetching {url}")
+        log.info(f"Fetching {url}")
         with self._open_url(url) as x:
             update = x.read()
             with open(self_path, "wb+") as fd:
                 fd.write(update)
-        print(f"Updated {self_path}")
+        log.info(f"Updated {self_path}")
 
     @command_description
     def self_update(self, subparser):
@@ -103,7 +115,7 @@ class GitExternal:
                                          "--show-toplevel"], cwd=path)
             self.rootdir = self.rootdir.decode('utf-8').strip()
         except CalledProcessError as e:
-            print("Not a git directory", e)
+            log.critical("Not a git directory", e)
             sys.exit(1)
 
         self.externals_file = os.path.join(self.rootdir, ".gitexternals")
@@ -161,7 +173,7 @@ class GitExternal:
                        if self.configurations[x]['path'].startswith(path)]
             for match in matches:
                 del self.configurations[match]
-                print(f"External '{repo}' is masking '{match}'.",
+                log.warning(f"External '{repo}' is masking '{match}'.",
                       file=sys.stderr)
             self.configurations[repo] = new_externals[repo]
 
@@ -196,7 +208,6 @@ class GitExternal:
                     if pattern and attribute and fnmatch.fnmatch(attribute, pattern):
                         matches = True
                 if matches:
-                    # print(name, "matches", repo)
                     self.configurations[repo].update(
                         {k: v for (k, v) in config.items()
                          if not k.startswith('match-')})
@@ -236,7 +247,7 @@ class GitExternal:
         check_call(["git", "add", self.externals_file])
         check_call(["git", "add", self.ignore_file])
 
-        print("Added external %s\n  Don't forget to call init" % (path))
+        log.warning("Added external %s\n  Don't forget to call init" % (path))
 
     def is_repository(self, path: str) -> bool:
         """Check if path is a git or SVN repository."""
@@ -274,47 +285,45 @@ class GitExternal:
             if 'update' in repo_only and self.is_repository(path):
                 # Update that external
                 if vcs == "git-svn":
-                    print(f"Updating GIT-SVN external: {repo}")
+                    log.info(f"Updating GIT-SVN external: {repo}")
                     call(["git", "svn", "rebase"], cwd=path)
                 elif vcs == "svn":
-                    print("Updating Git SVN external: %s" % repo)
+                    log.info("Updating Git SVN external: %s" % repo)
                     call(["svn", "up"], cwd=path)
                 else:
                     cur_branch = run(["git", "symbolic-ref", "--short", "HEAD"],
                                      cwd=path, capture_output=True)
                     if cur_branch.stdout.decode().strip() == config.get("branch"):
-                        print(f"Updating Git external: {repo}")
+                        log.info(f"Updating Git external: {repo}")
                         call(["git", "pull", "--ff-only"], cwd=path)
                     else:
-                        print(f"Skipping update of Git external: {repo}")
+                        log.warning(f"Skipping update, different branch checked out: {repo}")
             elif 'clone' in repo_only and not self.is_repository(path):
                 # Clone that repo
                 if config.get("symlink"):
                     link = os.path.expanduser(config["symlink"])
-                    print(f"Cloning symlinked external: {repo}")
+                    log.info(f"Cloning symlinked external: {repo}")
                     assert os.path.exists(link), "Path does not exist"
                     if os.path.exists(path) and os.path.islink(path):
                         os.unlink(path)
                     os.symlink(link, path)
                 elif vcs == "git-svn":
-                    print(f"Cloning Git SVN external: {repo}")
+                    log.info(f"Cloning Git SVN external: {repo}")
                     check_call(["git", "svn", "clone", config["url"],
                                 path, "-r", "HEAD"])
                 elif vcs == "svn":
-                    print("Cloning SVN external: %s" % repo)
+                    log.info("Cloning SVN external: %s" % repo)
                     check_call(["svn", "checkout", config["url"],
                                 path, ])
                 else:
-                    print(f"Cloning Git external: {repo}")
-                    check_call(["git", "clone", config["url"], path])
                     branch = config.get("branch")
-                    print(f"  Switch to branch or tag: {branch}")
-                    check_call(["git", "checkout", branch],
-                               cwd=path)
+                    log.info(f"Cloning Git external: {repo} (branch: {branch})")
+                    check_call(["git", "clone", config["url"],
+                                "--branch", branch, path])
             # recursively call for externals
             if (args.recursive and vcs in ['git', 'git-svn'] and
                     set(repo_only) & set(['clone', 'update'])):
-                print(f"Updating externals of {repo}")
+                log.info(f"Updating externals of {repo}")
                 ext = GitExternal(path=path)
                 ext.cmd_update(namedtuple('Args',
                                           ['recursive', 'automatic', 'external', 'only'])
@@ -322,7 +331,7 @@ class GitExternal:
 
             if config.get("run-init", "").lower() == "true":
                 init = os.path.join(path, "init")
-                print(init)
+                log.info(f"Running init: {init}")
                 if os.path.exists(init):
                     call(init, cwd=path)
 
