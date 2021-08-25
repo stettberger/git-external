@@ -254,6 +254,13 @@ class GitExternal:
         return any([os.path.exists(os.path.join(path, x))
                     for x in ['.git', '.svn']])
 
+    def get_branch_name(self, path):
+        """Returns the current branch name or 'DETACHED'"""
+        cur_branch = run(["git", "symbolic-ref", "--short", "HEAD"],
+                         cwd=path, capture_output=True)
+        ret = cur_branch.stdout.decode().strip()
+        return ret or "DETACHED"
+
     def init_or_update(self, recursive=True, only=None, external=None):
         """Init or update all repositories in self.configurations.
 
@@ -285,19 +292,19 @@ class GitExternal:
             if 'update' in repo_only and self.is_repository(path):
                 # Update that external
                 if vcs == "git-svn":
-                    log.info(f"Updating GIT-SVN external: {repo}")
+                    log.info(f"[{repo}] Updating GIT-SVN external")
                     call(["git", "svn", "rebase"], cwd=path)
                 elif vcs == "svn":
-                    log.info("Updating Git SVN external: %s" % repo)
+                    log.info("[{repo}] Updating Git SVN external")
                     call(["svn", "up"], cwd=path)
                 else:
-                    cur_branch = run(["git", "symbolic-ref", "--short", "HEAD"],
-                                     cwd=path, capture_output=True)
-                    if cur_branch.stdout.decode().strip() == config.get("branch"):
-                        log.info(f"Updating Git external: {repo}")
+                    cur_branch = self.get_branch_name(path)
+                    branch = config.get("branch") or "master"
+                    if branch == cur_branch:
+                        log.info(f"[{repo}] Updating Git external")
                         call(["git", "pull", "--ff-only"], cwd=path)
                     else:
-                        log.warning(f"Skipping update, different branch checked out: {repo}")
+                        log.warning(f"[{repo}] Skipping update, different branch: {branch} != {cur_branch}")
             elif 'clone' in repo_only and not self.is_repository(path):
                 # Clone that repo
                 if config.get("symlink"):
@@ -308,22 +315,31 @@ class GitExternal:
                         os.unlink(path)
                     os.symlink(link, path)
                 elif vcs == "git-svn":
-                    log.info(f"Cloning Git SVN external: {repo}")
+                    log.info(f"[{repo}] Cloning Git SVN external")
                     check_call(["git", "svn", "clone", config["url"],
                                 path, "-r", "HEAD"])
                 elif vcs == "svn":
-                    log.info("Cloning SVN external: %s" % repo)
+                    log.info("[{repo}] Cloning SVN external")
                     check_call(["svn", "checkout", config["url"],
                                 path, ])
                 else:
-                    branch = config.get("branch")
-                    log.info(f"Cloning Git external: {repo} (branch: {branch})")
+                    branch = config.get("branch") or "master"
+                    log.info(f"[{repo}] Cloning Git external (branch: {branch})")
                     check_call(["git", "clone", config["url"],
                                 "--branch", branch, path])
+            elif 'clone' in repo_only and self.is_repository(path):
+                if vcs == "git":
+                    cur_branch = self.get_branch_name(path)
+                    branch = config.get('branch') or "master"
+                    if cur_branch != branch:
+                        log.info(f"[{repo}] Switching branch {cur_branch} -> {branch}")
+                        check_call(["git", "checkout", branch],
+                                   cwd=path)
+
             # recursively call for externals
             if (args.recursive and vcs in ['git', 'git-svn'] and
                     set(repo_only) & set(['clone', 'update'])):
-                log.info(f"Updating externals of {repo}")
+                log.info(f"[{repo}] Updating recursive externals")
                 ext = GitExternal(path=path)
                 ext.cmd_update(namedtuple('Args',
                                           ['recursive', 'automatic', 'external', 'only'])
