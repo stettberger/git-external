@@ -19,3 +19,9 @@
 	url = https://github.com/stettberger/ispositive.git
 	symlink = is-positive-git
 	vcs = git
+
+[external "is-positive-hash"]
+	path = is-positive-hash
+	url = https://github.com/stettberger/ispositive.git
+	branch = 92bb8b7949e3062d0768dcad0a493210782d8f6b
+	vcs = git

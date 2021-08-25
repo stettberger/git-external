@@ -66,6 +66,16 @@ command has to be used.
     	only = update
     	vcs = git
 
+## Branches
+
+Within the `branch =` configuration, you cannot only give branch
+names, but also tag names. We use `git checkout` to guess what you
+want to checkout.
+
+On `update`, branches are not switched, even if the external
+definition has changed. If you want to be sure to switch to the
+configured branch, use `./git-external clone`.
+
 ## Overrides
 
 You can overide the settings for externals by putting an external
