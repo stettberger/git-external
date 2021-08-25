@@ -258,7 +258,7 @@ class GitExternal:
         cur_branch = run(["git", "symbolic-ref", "--short", "HEAD"],
                          cwd=path, capture_output=True)
         ret = cur_branch.stdout.decode().strip()
-        return ret or "DETACHED"
+        return ret or None
 
     def init_or_update(self, recursive=True, only=None, external=None):
         """Init or update all repositories in self.configurations.
@@ -302,6 +302,8 @@ class GitExternal:
                     if branch == cur_branch:
                         log.info(f"[{repo}] Updating Git external")
                         call(["git", "pull", "--ff-only"], cwd=path)
+                    elif cur_branch is None:
+                        log.warning(f"[{repo}] Skipping update, detached HEAD")
                     else:
                         log.warning(f"[{repo}] Skipping update, different branch: {branch} != {cur_branch}")
             elif 'clone' in repo_only and not self.is_repository(path):
