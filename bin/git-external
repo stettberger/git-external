@@ -173,8 +173,7 @@ class GitExternal:
                        if self.configurations[x]['path'].startswith(path)]
             for match in matches:
                 del self.configurations[match]
-                log.warning(f"External '{repo}' is masking '{match}'.",
-                      file=sys.stderr)
+                log.warning(f"External '{repo}' is masking '{match}'")
             self.configurations[repo] = new_externals[repo]
 
     def load_configuration(self):
@@ -324,9 +323,15 @@ class GitExternal:
                                 path, ])
                 else:
                     branch = config.get("branch") or "master"
-                    log.info(f"[{repo}] Cloning Git external (branch: {branch})")
-                    check_call(["git", "clone", config["url"],
-                                "--branch", branch, path])
+                    log.info(f"[{repo}] Cloning Git external")
+                    check_call(["git", "clone", config["url"], path])
+
+                    cur_branch = self.get_branch_name(path)
+                    branch = config.get('branch') or "master"
+                    if cur_branch != branch:
+                        log.info(f"[{repo}] Switching branch {cur_branch} -> {branch}")
+                        check_call(["git", "checkout", branch], cwd=path)
+
             elif 'clone' in repo_only and self.is_repository(path):
                 if vcs == "git":
                     cur_branch = self.get_branch_name(path)
