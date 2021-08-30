@@ -113,7 +113,7 @@ exists only one instance of it that is always symlinked.
 
 1. Install `git-external` into your git repo as `./init`
 
-         wget https://raw.githubusercontent.com/stettberger/git-external/master/git-external -O init
+         wget https://raw.githubusercontent.com/stettberger/git-external/master/bin/git-external -O init
          chmod u+x init
 
 2. Add an external repository
