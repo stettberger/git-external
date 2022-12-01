@@ -325,11 +325,19 @@ class GitExternal:
                     else:
                         log.warning(f"[{repo}] Skipping update, different branch: {branch} != {cur_branch}")
             elif 'clone' in repo_only and not self.is_repository(path):
-                # Clone that repo
+                # Clone or Symlink that repo
+
+                do_symlink = False
                 if config.get("symlink"):
                     link = os.path.expanduser(config["symlink"])
+                    # We only do a symlink, if this would not provoke a loop
+                    if os.path.realpath(path) != os.path.realpath(link):
+                        do_symlink = True
+
+                if do_symlink:
+                    link = os.path.expanduser(config["symlink"])
                     log.info(f"Cloning symlinked external: {repo}")
-                    assert os.path.exists(link), "Path does not exist"
+                    assert os.path.exists(link), f"Path {link} does not exist"
                     if os.path.exists(path) and os.path.islink(path):
                         os.unlink(path)
                     os.symlink(link, path)
@@ -458,11 +466,16 @@ class GitExternal:
             print(f'[external "{repo}"]')
             for key, value in config.items():
                 print(f'  {key} = {value}')
+            if args.recursive and os.path.exists(os.path.join(config['path'], '.gitexternals')):
+                x = check_output(['./init', 'show'], cwd=config['path'])
+                print((b"\t"+x.replace(b"\n", b"\n\t")).decode())
 
     @command_description
     def show(self, subparser):
         """show the externals configuration"""
         subparser.set_defaults(func=self.cmd_show)
+        subparser.add_argument("-r", "--recursive", default=False,action='store_true',
+                               help="Show externals recursive")
 
 
 if __name__ == "__main__":
