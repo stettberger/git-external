@@ -109,6 +109,8 @@ class InitScript:
 
 
 class GitExternal:
+    updated_paths = set()
+
     def __init__(self, path='.'):
         try:
             self.rootdir = check_output(["git", "rev-parse",
@@ -307,7 +309,14 @@ class GitExternal:
                 repo_only = ('clone', 'update')
 
             if 'update' in repo_only and self.is_repository(path):
+                realpath = os.path.realpath(path)
                 # Update that external
+                if realpath in GitExternal.updated_paths:
+                    log.info(f"[{repo}] Already updated. Skipping.")
+                    return
+                else:
+                    GitExternal.updated_paths.add(realpath)
+
                 if vcs == "git-svn":
                     log.info(f"[{repo}] Updating GIT-SVN external")
                     call(["git", "svn", "rebase"], cwd=path)
