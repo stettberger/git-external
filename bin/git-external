@@ -398,7 +398,8 @@ class GitExternal:
         merge/pull.
         """
         hook_dir = check_output(["git", "rev-parse", "--git-path", "hooks"])
-        hook = os.path.join(hook_dir.decode().strip(), "post-merge")
+        hook_dir = hook_dir.decode().strip()
+        hook = os.path.join(hook_dir, "post-merge")
         if os.path.exists(hook_dir) and not os.path.exists(hook):
             with open(hook, "w+") as fd:
                 fd.write("#!/bin/sh\n\n")
