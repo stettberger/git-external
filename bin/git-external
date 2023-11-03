@@ -251,17 +251,20 @@ class GitExternal:
 
         # Add path to ignore file
         found = False
+        # Prepend newline if file does not end with one
+        prefix = ""
         if os.path.exists(self.ignore_file):
             # check if directory is already ignored
             with open(self.ignore_file, "r") as fd:
                 for line in fd:
+                    prefix = "" if line.endswith("\n") else "\n"
                     if line.strip() in (path, "./" + path, "/" + path):
                         found = True
                         break
         # append to .gitignore
         if not found:
             with open(self.ignore_file, "a+") as fd:
-                fd.write("/" + path+"\n")
+                fd.write(prefix + "/" + path + "\n")
 
         check_call(["git", "add", self.externals_file])
         check_call(["git", "add", self.ignore_file])
