@@ -261,17 +261,20 @@ class GitExternal:
 
         # Add path to ignore file
         found = False
+        # Prepend newline if file does not end with one
+        prefix = ""
         if os.path.exists(self.ignore_file):
             # check if directory is already ignored
             with open(self.ignore_file, "r") as fd:
                 for line in fd:
+                    prefix = "" if line.endswith("\n") else "\n"
                     if line.strip() in (path, "./" + path, "/" + path):
                         found = True
                         break
         # append to .gitignore
         if not found:
             with open(self.ignore_file, "a+") as fd:
-                fd.write("/" + path+"\n")
+                fd.write(prefix + "/" + path + "\n")
 
         check_call(["git", "add", self.externals_file])
         check_call(["git", "add", self.ignore_file])
@@ -330,16 +333,16 @@ class GitExternal:
 
                 if vcs == "git-svn":
                     log.info(f"[{repo}] Updating GIT-SVN external")
-                    call(["git", "svn", "rebase"], cwd=path)
+                    check_call(["git", "svn", "rebase"], cwd=path)
                 elif vcs == "svn":
                     log.info("[{repo}] Updating Git SVN external")
-                    call(["svn", "up"], cwd=path)
+                    check_call(["svn", "up"], cwd=path)
                 else:
                     cur_branch = self.get_branch_name(path)
                     branch = config.get("branch") or "master"
                     if branch == cur_branch:
                         log.info(f"[{repo}] Updating Git external")
-                        call(["git", "pull", "--ff-only"], cwd=path)
+                        check_call(["git", "pull", "--ff-only"], cwd=path)
                     elif cur_branch is None:
                         log.warning(f"[{repo}] Skipping update, detached HEAD")
                     else:
@@ -406,7 +409,7 @@ class GitExternal:
                                    cwd=path)
 
             # recursively call for externals
-            if (args.recursive and vcs in ['git', 'git-svn'] and
+            if (recursive and vcs in ['git', 'git-svn'] and
                     set(repo_only) & set(['clone', 'update'])):
                 log.info(f"[{repo}] Updating recursive externals")
                 ext = GitExternal(path=path)
@@ -425,7 +428,8 @@ class GitExternal:
         merge/pull.
         """
         hook_dir = check_output(["git", "rev-parse", "--git-path", "hooks"])
-        hook = os.path.join(hook_dir.decode().strip(), "post-merge")
+        hook_dir = hook_dir.decode().strip()
+        hook = os.path.join(hook_dir, "post-merge")
         if os.path.exists(hook_dir) and not os.path.exists(hook):
             with open(hook, "w+") as fd:
                 fd.write("#!/bin/sh\n\n")
