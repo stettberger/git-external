@@ -13,6 +13,7 @@ import importlib.machinery
 import fnmatch
 import contextlib
 import argparse
+import string
 
 import logging
 try:
@@ -210,6 +211,14 @@ class GitExternal:
         # Overrides from global config
         override = get_git_config(path=self.path)
 
+        # Expand ${}
+        for repo in self.configurations.values():
+            for k,v in repo.items():
+                if '$' in v:
+                    tmpl = string.Template(v)
+                    v = tmpl.substitute(override['external'])
+                    repo[k] = v
+
         # We inspect all override configurations and match them up
         # with the externals from this repository by match-*
         # attribute. The corresponding attribute is globbed against
@@ -222,7 +231,8 @@ class GitExternal:
                         continue
                     pattern = config[key].strip()
                     key = key[len('match-'):]
-
+                    if key not in self.configurations[repo]:
+                        continue
                     attribute = self.configurations[repo][key].strip()
                     if pattern and attribute and fnmatch.fnmatch(attribute, pattern):
                         matches = True
@@ -297,6 +307,7 @@ class GitExternal:
             path = os.path.join(self.rootdir, config["path"])
             vcs = config.get("vcs", "git").lower()
 
+            # Handle only a single external
             if external and external not in (repo, config['path']):
                 continue
 
@@ -334,22 +345,38 @@ class GitExternal:
                     else:
                         log.warning(f"[{repo}] Skipping update, different branch: {branch} != {cur_branch}")
             elif 'clone' in repo_only and not self.is_repository(path):
+                # If an external is non-auto, then we skip it, if it
+                # is not explicitly mentioned as an argument.
+                auto_values = dict(true=True, t=True, yes=True)
+                auto = auto_values.get(config.get('auto', 'true').lower())
+                if not auto and not external:
+                    continue
+                
                 # Clone or Symlink that repo
-
                 do_symlink = False
-                if config.get("symlink"):
-                    link = os.path.expanduser(config["symlink"])
-                    # We only do a symlink, if this would not provoke a loop
-                    if os.path.realpath(path) != os.path.realpath(link):
-                        do_symlink = True
 
-                if do_symlink:
-                    link = os.path.expanduser(config["symlink"])
-                    log.info(f"Cloning symlinked external: {repo}")
-                    assert os.path.exists(link), f"Path {link} does not exist"
-                    if os.path.exists(path) and os.path.islink(path):
-                        os.unlink(path)
-                    os.symlink(link, path)
+                def create_symlink(src, dst):
+                    src = os.path.expanduser(src)
+                    if os.path.exists(dst):
+                        if not os.path.islink(path):
+                            raise RuntimeError(f"Cannot create symlink at {src}->{dst}")
+                        if os.path.realpath(src) != os.path.realpath(dst):
+                            os.unlink(dst)
+                        else:
+                            return False
+                    os.symlink(src, dst)
+                    return True
+
+                if config.get("symlink"):
+                    if create_symlink(config.get("symlink"), path):
+                        log.info(f"Cloning symlinked external: {repo}")
+                        return
+
+                if vcs == "none":
+                    if create_symlink(config.get("url"), path):
+                        log.info(f"Cloning symlinked external: {repo}")
+                    else:
+                        log.info(f"[{repo}] VCS=none; skipping clone/update")
                 elif vcs == "git-svn":
                     log.info(f"[{repo}] Cloning Git SVN external")
                     check_call(["git", "svn", "clone", config["url"],

@@ -76,6 +76,23 @@ On `update`, branches are not switched, even if the external
 definition has changed. If you want to be sure to switch to the
 configured branch, use `./git-external clone`.
 
+## Further Attributes:
+
+- `auto = false`: Exclude externals from automatic cloning
+   
+        [external "exams"]
+             auto = false
+
+- `vcs = none`: Only create a symlink without any VCS (e.g to symlink Nexcloud folders)
+
+        [external]
+            ibrvsscloud = "/home/...."
+        
+        [external "foo"]
+                url = "${ibrvsscloud}/foo"	
+                path = "foo"
+                vcs = none
+
 ## Overrides
 
 You can overide the settings for externals by putting an external
@@ -108,6 +125,7 @@ be employed by overrides:
 
 Instead of cloning always a new instance of the bib repository there
 exists only one instance of it that is always symlinked.
+
 
 ## Getting Started
 
