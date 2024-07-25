@@ -241,7 +241,7 @@ class GitExternal:
                         {k: v for (k, v) in config.items()
                          if not k.startswith('match-')})
 
-    def add_external(self, url, path, branch='master', vcs="git"):
+    def add_external(self, url, path, branch='main', vcs="git"):
         """Adding an external by writing it to .gitexternals.
 
         Arguments:
@@ -339,7 +339,7 @@ class GitExternal:
                     check_call(["svn", "up"], cwd=path)
                 else:
                     cur_branch = self.get_branch_name(path)
-                    branch = config.get("branch") or "master"
+                    branch = config.get("branch") or "main"
                     if branch == cur_branch:
                         log.info(f"[{repo}] Updating Git external")
                         check_call(["git", "pull", "--ff-only"], cwd=path)
@@ -389,12 +389,12 @@ class GitExternal:
                     check_call(["svn", "checkout", config["url"],
                                 path, ])
                 else:
-                    branch = config.get("branch") or "master"
+                    branch = config.get("branch") or "main"
                     log.info(f"[{repo}] Cloning Git external")
                     check_call(["git", "clone", config["url"], path])
 
                     cur_branch = self.get_branch_name(path)
-                    branch = config.get('branch') or "master"
+                    branch = config.get('branch') or "main"
                     if cur_branch != branch:
                         log.info(f"[{repo}] Switching branch {cur_branch} -> {branch}")
                         check_call(["git", "checkout", branch], cwd=path)
@@ -402,7 +402,7 @@ class GitExternal:
             elif 'clone' in repo_only and self.is_repository(path):
                 if vcs == "git":
                     cur_branch = self.get_branch_name(path)
-                    branch = config.get('branch') or "master"
+                    branch = config.get('branch') or "main"
                     if cur_branch != branch:
                         log.info(f"[{repo}] Switching branch {cur_branch} -> {branch}")
                         check_call(["git", "checkout", branch],
@@ -489,7 +489,7 @@ class GitExternal:
         subparser.set_defaults(func=self.cmd_add)
         subparser.add_argument("URL", help="Url of the external")
         subparser.add_argument("PATH", help="Path where to clone the external")
-        subparser.add_argument("-b", "--branch", default="master",
+        subparser.add_argument("-b", "--branch", default="main",
                                help="Branch that should be used")
         vcs_group = subparser.add_mutually_exclusive_group()
         vcs_group.add_argument("-s", "--svn", action='store_const',
