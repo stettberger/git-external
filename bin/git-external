@@ -2,6 +2,7 @@
 """Add other Git directories as externals (subfolders)."""
 import os
 import re
+import stat
 import sys
 from subprocess import check_output, check_call, call, run, CalledProcessError
 from subprocess import DEVNULL
@@ -241,7 +242,7 @@ class GitExternal:
                         {k: v for (k, v) in config.items()
                          if not k.startswith('match-')})
 
-    def add_external(self, url, path, branch='master', vcs="git"):
+    def add_external(self, url, path, branch='master', vcs="git", script=None):
         """Adding an external by writing it to .gitexternals.
 
         Arguments:
@@ -251,6 +252,7 @@ class GitExternal:
         Keyword arguments:
         branch -- Which branch should be cloned/pulled.
         vcs    -- Which vcs to use (git, svn, or git-svn).
+        script -- Script to run after cloning the external.
         """
         config = ["git", "config", "-f", self.externals_file, "--replace-all"]
         path = os.path.relpath(os.path.abspath(path), self.rootdir)
@@ -258,6 +260,8 @@ class GitExternal:
         check_call(config + [f"external.{path}.url", url])
         check_call(config + [f"external.{path}.branch", branch])
         check_call(config + [f"external.{path}.vcs", vcs])
+        if script:
+            check_call(config + [f"external.{path}.script", script])
 
         # Add path to ignore file
         found = False
@@ -417,6 +421,20 @@ class GitExternal:
                                           ['recursive', 'automatic', 'external', 'only'])
                                (True, False, None, None))
 
+            # Run the script if it exists
+            script = config.get("script")
+            if script:
+                script_path = os.path.join(self.rootdir, script)
+                if os.path.exists(script_path):
+                    log.info(f"[{repo}] Running script: {script_path}")
+                     # Ensure the script is executable
+                    st = os.stat(script_path)
+                    os.chmod(script_path, st.st_mode | stat.S_IEXEC)
+                    call([script_path], cwd=self.rootdir)
+                else:
+                    log.error(f"[{repo}] Script '{script}' not found at: {script_path}")
+                    
+
             if config.get("run-init", "").lower() == "true":
                 init = os.path.join(path, "init")
                 log.info(f"Running init: {init}")
@@ -481,7 +499,7 @@ class GitExternal:
         args   -- arguments retrieved with argparse
         """
         self.add_external(args.URL, args.PATH,
-                          vcs=args.vcs, branch=args.branch)
+                          vcs=args.vcs, branch=args.branch, script=args.script)
 
     @command_description
     def add(self, subparser):
@@ -491,6 +509,8 @@ class GitExternal:
         subparser.add_argument("PATH", help="Path where to clone the external")
         subparser.add_argument("-b", "--branch", default="master",
                                help="Branch that should be used")
+        subparser.add_argument("--script", default=None,
+                               help="Script to run after cloning the external")
         vcs_group = subparser.add_mutually_exclusive_group()
         vcs_group.add_argument("-s", "--svn", action='store_const',
                                dest='vcs', const='svn', default='git',

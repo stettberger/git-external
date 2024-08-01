@@ -92,6 +92,10 @@ configured branch, use `./git-external clone`.
                 url = "${ibrvsscloud}/foo"	
                 path = "foo"
                 vcs = none
+- `script = none`: Execute a script after cloning the external
+
+        [external "foo"]
+                script = run.sh
 
 ## Overrides
 
