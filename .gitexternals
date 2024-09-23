@@ -3,16 +3,6 @@
 	url = https://github.com/stettberger/ispositive.git
 	branch = master
 	vcs = git
-[external "is-positive-svn"]
-	path = is-positive-svn
-	url = https://github.com/stettberger/ispositive.git
-	branch = master
-	vcs = svn
-[external "is-positive-git-svn"]
-	path = is-positive-git-svn
-	url = https://github.com/stettberger/ispositive.git
-	branch = master
-	vcs = git-svn
 
 [external "is-positive-symlink"]
 	path = is-positive-symlink
@@ -25,3 +15,11 @@
 	url = https://github.com/stettberger/ispositive.git
 	branch = 92bb8b7949e3062d0768dcad0a493210782d8f6b
 	vcs = git
+
+[external "is-positive-sparse"]
+	path = is-positive-sparse
+	url = https://github.com/stettberger/ispositive.git
+	branch = master
+	vcs = git
+        cloneArgs  = "--sparse --depth=1"
+        updateArgs = --stat

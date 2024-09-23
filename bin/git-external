@@ -47,7 +47,7 @@ def get_git_config(file=None, path='.') -> dict:
     lines = check_output(["git", "config", "-l"] + file_cmd, cwd=path)
     lines = lines.decode("utf-8").split("\n")
     for line in lines:
-        m = re.match(r"external\.(.+)\.([^.]+)=(.*)", line)
+        m = re.match(r"external\.([^=]+)\.([^=.]+)=(.*)", line)
         if m:
             config[m.group(1)][m.group(2)] = m.group(3)
         m = re.match(r"external\.([^.]+)=(.*)", line)
@@ -55,6 +55,13 @@ def get_git_config(file=None, path='.') -> dict:
             config["external"][m.group(1)]= m.group(2)
     return config
 
+def get_args(config, option):
+    """Parse a config[option] as argument list"""
+    option = option.lower()
+    if option in config:
+        opts = config.get(option).strip().split()
+        return [x for x in opts if x]
+    return []
 
 class command_description:
     """Decorator that adds a hidden attribute _commands to the class which
@@ -341,8 +348,9 @@ class GitExternal:
                     cur_branch = self.get_branch_name(path)
                     branch = config.get("branch") or "master"
                     if branch == cur_branch:
-                        log.info(f"[{repo}] Updating Git external")
-                        check_call(["git", "pull", "--ff-only"], cwd=path)
+                        opts = get_args(config, "updateArgs")
+                        log.info(f"[{repo}] Updating Git external, {opts}")
+                        check_call(["git", "pull", "--ff-only"] + opts, cwd=path)
                     elif cur_branch is None:
                         log.warning(f"[{repo}] Skipping update, detached HEAD")
                     else:
@@ -389,9 +397,12 @@ class GitExternal:
                     check_call(["svn", "checkout", config["url"],
                                 path, ])
                 else:
-                    branch = config.get("branch") or "master"
-                    log.info(f"[{repo}] Cloning Git external")
-                    check_call(["git", "clone", config["url"], path])
+                    branch = config.get("branch", "master")
+                    opts = get_args(config, "cloneArgs")
+                    log.info(f"[{repo}] Cloning Git external, {opts}")
+                    cmd = ["git", "clone"] + opts + [config["url"], path]
+                    print(" ".join(cmd))
+                    check_call(cmd)
 
                     cur_branch = self.get_branch_name(path)
                     branch = config.get('branch') or "master"

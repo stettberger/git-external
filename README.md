@@ -93,6 +93,18 @@ configured branch, use `./git-external clone`.
                 path = "foo"
                 vcs = none
 
+- `cloneArgs`: Additional arguments/options when clone a repository
+
+        [external "foo"]
+               ...
+               cloneArgs = "--sparse --depth=1"
+
+- `updateArgs`: Additional arguments/options when clone a repository (e.g. --sparse)
+
+        [external "foo"]
+               ...
+               updateArgs = --sparse
+
 ## Overrides
 
 You can overide the settings for externals by putting an external
