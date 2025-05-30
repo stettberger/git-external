@@ -92,7 +92,7 @@ configured branch, use `./git-external clone`.
                 url = "${ibrvsscloud}/foo"	
                 path = "foo"
                 vcs = none
-- `script = none`: Execute a script after cloning the external
+- `script = none`: Execute a script located at repository root after cloning the external.  Note: not supported on Windows (including git-bash).
 
         [external "foo"]
                 script = run.sh
@@ -108,6 +108,13 @@ configured branch, use `./git-external clone`.
         [external "foo"]
                ...
                updateArgs = --sparse
+
+- `sparseCheckout`: Enable and configure sparse checkout.  If this option is not present or is empty, sparse checkout is disabled.  Note, `--sparse` option to `cloneArgs` or `updateArgs` is not required for this to work.
+
+        [external "foo"]
+               ...
+               sparseCheckout = "bar baz"
+
 
 ## Overrides
 

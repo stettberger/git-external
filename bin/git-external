@@ -304,6 +304,20 @@ class GitExternal:
         ret = cur_branch.stdout.decode().strip()
         return ret or None
 
+    def update_sparse_checkout(self, repo, path, config):
+        """Updates the current set of sparse checkouts"""
+        sparse_checkout = get_args(config, "sparseCheckout")
+        cur_dir = os.curdir
+        os.chdir(path)
+        if sparse_checkout:
+            log.info(f"[{repo}] Setting sparse-checkout to {sparse_checkout}")
+            cmd = ["git", "sparse-checkout", "set"] + sparse_checkout     
+        else:
+            log.info(f"[{repo}] Sparse checkout not in use, disabled")        
+            cmd = ["git", "sparse-checkout", "disable"]
+        check_call(cmd)
+        os.chdir(cur_dir)
+
     def init_or_update(self, recursive=True, only=None, external=None):
         """Init or update all repositories in self.configurations.
 
@@ -355,6 +369,7 @@ class GitExternal:
                         opts = get_args(config, "updateArgs")
                         log.info(f"[{repo}] Updating Git external, {opts}")
                         check_call(["git", "pull", "--ff-only"] + opts, cwd=path)
+                        self.update_sparse_checkout(repo, path, config)
                     elif cur_branch is None:
                         log.warning(f"[{repo}] Skipping update, detached HEAD")
                     else:
@@ -407,7 +422,7 @@ class GitExternal:
                     cmd = ["git", "clone"] + opts + [config["url"], path]
                     print(" ".join(cmd))
                     check_call(cmd)
-
+                    self.update_sparse_checkout(repo, path, config)
                     cur_branch = self.get_branch_name(path)
                     branch = config.get('branch') or "master"
                     if cur_branch != branch:
